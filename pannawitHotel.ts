@@ -1,34 +1,39 @@
-const fs = require("fs");
+import { Command, getCommandsFromFileName } from "./readfile";
 
-class Command {
-  name: string;
-  params: Array<string>;
-  constructor(name, params) {
-    this.name = name;
-    this.params = params;
+class Room {
+  private roomNumber: number;
+  private guest: Guest | undefined;
+  private keycard: Keycard | undefined;
+
+  constructor(roomNumber: number) {
+    this.roomNumber = roomNumber;
   }
+
+  public getGuest = () => this.guest;
+
+  public getKeycard = () => this.keycard;
+
+  public getRoomNumber = () => this.roomNumber;
+
+  public isOwn = (guestName: string, keycardNumber: number) =>
+    guestName === this.guest.getName() && keycardNumber === this.keycard.getKeycardNumber();
+
+  public checkAvailable = () => !this.guest;
+
+  public book = (guest: Guest, keycard: Keycard) => {
+    this.guest = guest;
+    keycard.book(this.roomNumber);
+    this.keycard = keycard;
+  };
+
+  public checkout = () => {
+    this.guest = undefined;
+    this.keycard.checkout();
+    this.keycard = undefined;
+  };
 }
 
-function getCommandsFromFileName(fileName) {
-  const file = fs.readFileSync(fileName, "utf-8");
-
-  return file
-    .split("\n")
-    .map((line) => line.split(" "))
-    .map(
-      ([commandName, ...params]) =>
-        new Command(
-          commandName,
-          params.map((param) => {
-            const parsedParam = parseInt(param, 10);
-
-            return Number.isNaN(parsedParam) ? param : parsedParam;
-          })
-        )
-    );
-}
-
-class Customer {
+class Guest {
   private name: string;
   private age: number;
   constructor(name: string, age: number) {
@@ -39,41 +44,10 @@ class Customer {
   public getName = () => this.name;
 
   public getAge = () => this.age;
-}
 
-class Room {
-  private roomNumber: number;
-  private isBooked: boolean;
-  private booker: Customer | undefined;
-  private keycard: Keycard | undefined;
-
-  constructor(roomNumber: number) {
-    this.roomNumber = roomNumber;
-    this.isBooked = false;
-  }
-
-  public getIsBook = () => this.isBooked;
-
-  public getRoomNumber = () => this.roomNumber;
-
-  public getKeycard = () => this.keycard;
-
-  public book = (customer: Customer, keycard: Keycard) => {
-    if (!this.isBooked) {
-      this.isBooked = true;
-      this.booker = customer;
-      this.keycard = keycard;
-    }
-    return this.isBooked;
-  };
-
-  public getCustomer = () => this.booker;
-
-  public checkout = () => {
-    this.booker = undefined;
-    this.isBooked = false;
-    this.keycard.disuse();
-    this.keycard = undefined;
+  public isSameGuest = (otherGuest: Guest) => {
+    if (otherGuest.getName() === this.name && otherGuest.getAge() === this.age) return true;
+    false;
   };
 }
 
@@ -85,223 +59,217 @@ class Keycard {
     this.keycardNumber = keycardNumber;
   }
 
-  public checkAvailable = () => !this.roomNumber;
-
   public getKeycardNumber = () => this.keycardNumber;
 
-  public use = (roomNumber: number) => (this.roomNumber = roomNumber);
+  public checkAvailable = () => {
+    if (!this.roomNumber) {
+      return true;
+    }
+    return false;
+  };
 
-  public disuse = () => (this.roomNumber = undefined);
+  public book = (roomNumber: number) => {
+    this.roomNumber = roomNumber;
+  };
+
+  public checkout = () => (this.roomNumber = undefined);
 }
 
 class Hotel {
   private rooms: Room[];
-  private customers: Customer[];
+  private guests: Guest[];
   private keycards: Keycard[];
 
-  public createRooms = (numFloor: number, roomPerFloor: number) => {
+  public createRooms = (floorNumber: number, roomPerFloor: number): void => {
     const totalRoom = [...Array(roomPerFloor + 1).keys()].slice(1); // ? do not collect room zero
-    const totalFloor = [...Array(numFloor + 1).keys()].slice(1).map((f: number) => f * 100);
+    const totalFloor = [...Array(floorNumber + 1).keys()].slice(1).map((f: number) => f * 100);
     const allRooms = totalFloor.map((f: number) => totalRoom.map((r: number) => f + r)).flat();
 
-    const allKeycards = [...Array(allRooms.length + 1).keys()].slice(1);
+    const allKeycards = [...Array(roomPerFloor * floorNumber + 1).keys()].slice(1);
 
-    this.rooms = allRooms.map((fr: number) => {
-      return new Room(fr);
-    });
+    this.rooms = allRooms.map((roomNumber: number) => new Room(roomNumber));
 
     this.keycards = allKeycards.map((keycardNumber: number) => {
       return new Keycard(keycardNumber);
     });
 
-    this.customers = [];
-
-    console.log(`Hotel created with ${numFloor} floor(s), ${roomPerFloor} room(s) per floor.`);
+    this.guests = [];
+    console.log(`Hotel created with ${floorNumber} floor(s), ${roomPerFloor} room(s) per floor.`);
   };
 
-  public getAvailableRooms = () => {
-    const availableRooms = this.rooms.filter((r) => !r.getIsBook());
-    const list_rooms = availableRooms.map((room) => room.getRoomNumber());
-
-    return list_rooms;
+  public getAvailableRoom = () => {
+    const rooms: Room[] = this.rooms.filter((room: Room) => room.checkAvailable());
+    console.log(`${rooms.map((room) => room.getRoomNumber())}`);
   };
 
-  private getRoomByFloor = (floorNumber: number) => {
-    const floorConvert = floorNumber * 100;
-
-    return this.rooms.filter((r) => r.getRoomNumber() >= floorConvert && r.getRoomNumber() < floorConvert + 100);
-  };
-
-  public getCustomer = () => this.customers.map((c) => c.getName());
-
-  public getCustomerByRoomNumber = (roomNumber: number) => this.rooms.find((r) => r.getRoomNumber() === roomNumber);
-
-  public getCustomerByAge = (condition: string, age: number) => {
-    let customerList: Customer[] = [];
-    switch (condition) {
-      case ">":
-        customerList = this.customers.filter((c) => c.getAge() > age);
-      case ">=":
-        customerList = this.customers.filter((c) => c.getAge() >= age);
-      case "<":
-        customerList = this.customers.filter((c) => c.getAge() < age);
-      case "<=":
-        customerList = this.customers.filter((c) => c.getAge() <= age);
-    }
-    return customerList.map((c) => c.getName());
-  };
-
-  public getCustomerByFloor = (floorNumber: number) => {
-    let rooms = this.getRoomByFloor(floorNumber);
-
-    rooms = rooms.filter((r) => r.getIsBook());
-
-    const customerList = rooms.map((r) => r.getCustomer());
-    return customerList.map((c) => c.getName());
-  };
-
-  public bookingByRoom = (roomNumber: number, customerName: string, customerAge) => {
-    let customer = new Customer(customerName, customerAge);
-    let room = this.rooms.find((r) => r.getRoomNumber() === roomNumber);
-    let keycard = this.keycards.find((keycard) => keycard.checkAvailable() === true);
-
-    if (room.getIsBook()) {
-      const customer = room.getCustomer();
-      console.log(`Cannot book room ${roomNumber} for ${customer.getName()}, The room is currently booked by ${customer.getName()}.`);
-      return;
-    }
-
-    keycard.use(roomNumber);
-    room.book(customer, keycard);
-    if (!this.customers.some((c) => c.getName() === customer.getName())) {
-      this.customers = [...this.customers, customer];
-    }
-
-    console.log(`Room ${room.getRoomNumber()} is booked by ${customer.getName()} with keycard number ${keycard.getKeycardNumber()}.`);
-  };
-
-  public bookingByFloor = (floorNumber: number, customerName: string) => {
-    let rooms = this.getRoomByFloor(floorNumber);
-
-    rooms = rooms.filter((r) => !r.getIsBook());
-    let roomNumberList = [];
-    let keycardNumberList = [];
-    if (rooms.length > 0) {
-      rooms.forEach((r) => {
-        let customer = this.customers.find((c) => c.getName() == customerName);
-        let keycard = this.keycards.find((keycard) => keycard.checkAvailable() === true);
-        keycard.use(r.getRoomNumber());
-        r.book(customer, keycard);
-        keycardNumberList = [...keycardNumberList, keycard.getKeycardNumber()];
-        roomNumberList = [...roomNumberList, r.getRoomNumber()];
-      });
-      console.log(`Room ${roomNumberList} are booked with keycard number ${keycardNumberList}`);
-      return;
-    }
-    console.log(`Cannot book floor ${floorNumber} for ${customerName}.`);
-  };
-
-  public checkoutByKeycard = (customerName: string, keycardNumber: number) => {
-    const room = this.rooms.find((r) => {
-      const keycard = r.getKeycard();
-      if (keycard && keycard.getKeycardNumber() === keycardNumber) return r;
-    });
-
-    if (room.getCustomer().getName() === customerName) {
-      room.checkout();
-      this.customers = this.customers.filter((c) => c.getName() !== customerName);
-      console.log(`Room ${room.getRoomNumber()} is checkout.`);
+  public bookByRoom = (roomNumber: number, guestName: string, guestAge: number) => {
+    const room: Room = this.rooms.find((r: Room) => r.getRoomNumber() === roomNumber);
+    const bookGuest = new Guest(guestName, guestAge);
+    if (room.checkAvailable()) {
+      const keycard: Keycard = this.book(room, bookGuest);
+      console.log(`Room ${room.getRoomNumber()} is booked by ${guestName} with keycard number ${keycard.getKeycardNumber()}.`);
     } else {
-      console.log(`Only Thor can checkout with keycard number ${keycardNumber}.`);
+      console.log(`Cannot book room ${roomNumber} for ${guestName}, The room is currently booked by ${room.getGuest().getName()}.`);
     }
+  };
+
+  public bookByFloor = (floorNumber: number, guestName: string, guestAge: number) => {
+    const availableRoom: Room[] = this.rooms.filter((room: Room) => this.getFloorOfRoom(room.getRoomNumber()) === floorNumber);
+    const isAllRoomAvailable: boolean = availableRoom.every((room: Room) => room.checkAvailable());
+
+    if (isAllRoomAvailable) {
+      const guest: Guest = new Guest(guestName, guestAge);
+      availableRoom.forEach((room: Room) => this.book(room, guest));
+      console.log(
+        `Room ${availableRoom.map((room: Room) => room.getRoomNumber())} are booked with keycard number ${availableRoom.map((room: Room) =>
+          room.getKeycard().getKeycardNumber()
+        )}`
+      );
+      return;
+    }
+    console.log(`Cannot book floor ${floorNumber} for ${guestName}.`);
+  };
+
+  public checkoutByKeycard = (keycardNumber: number, guestName: string) => {
+    const room: Room = this.rooms.find((room: Room) => room.getKeycard() && room.getKeycard().getKeycardNumber() === keycardNumber);
+
+    if (room.isOwn(guestName, keycardNumber)) {
+      room.checkout();
+      this.removeGuest(guestName);
+      console.log(`Room ${room.getRoomNumber()} is checkout.`);
+
+      return;
+    }
+
+    console.log(`Only Thor can checkout with keycard number ${keycardNumber}.`);
   };
 
   public checkoutByFloor = (floorNumber: number) => {
-    let rooms = this.getRoomByFloor(floorNumber);
-
-    rooms = rooms.filter((r) => r.getIsBook());
-
-    const roomNumberList = rooms.map((r) => {
-      r.checkout();
-      return r.getRoomNumber();
+    const rooms_checkout = this.rooms.filter((r: Room) => {
+      const floor: number = this.getFloorOfRoom(r.getRoomNumber());
+      if (floorNumber === floor && !r.checkAvailable()) {
+        r.checkout();
+        return r;
+      }
     });
+    console.log(`Room ${rooms_checkout.map((room: Room) => room.getRoomNumber())} are checkout.`);
+  };
 
-    console.log(`Room ${roomNumberList} are checkout.`);
+  public getAvailableGuest = () => console.log(`${this.guests.map((guest: Guest) => guest.getName())}`);
+
+  public findGuestByAge = (condition: string, age: number) => {
+    let guest: Guest[] = [];
+    switch (condition) {
+      case ">":
+        guest = this.guests.filter((c) => c.getAge() > age);
+      case ">=":
+        guest = this.guests.filter((c) => c.getAge() >= age);
+      case "<":
+        guest = this.guests.filter((c) => c.getAge() < age);
+      case "<=":
+        guest = this.guests.filter((c) => c.getAge() <= age);
+    }
+    console.log(`${guest.map((c) => c.getName())}`);
+  };
+
+  public findGuestByRoom = (roomNumber: number) => {
+    const room: Room = this.rooms.find((room: Room) => room.getRoomNumber() === roomNumber);
+    console.log(`${room.getGuest().getName()}`);
+  };
+
+  public findGuestByFloor = (floorNumber: number) => {
+    const rooms: Room[] = this.rooms.filter((room: Room) => !room.checkAvailable() && this.getFloorOfRoom(room.getRoomNumber()) === floorNumber);
+    console.log(`${rooms.map((r: Room) => r.getGuest().getName())}`);
+  };
+
+  private removeGuest = (guestName: string) => {
+    const isBookingRoom: boolean = this.rooms.some((room: Room) => room.getGuest() && room.getGuest().getName() === guestName);
+
+    if (!isBookingRoom) {
+      this.guests = this.guests.filter((c) => c.getName() !== guestName);
+    }
+  };
+
+  private getFloorOfRoom = (roomNumber: number) => Math.floor(roomNumber / 100);
+
+  private book = (room: Room, bookGuest: Guest) => {
+    const keycard: Keycard = this.keycards.find((key: Keycard) => key.checkAvailable());
+    let guest: Guest = this.guests.find((guest: Guest) => guest.isSameGuest(bookGuest));
+    if (!guest) {
+      guest = bookGuest;
+      this.guests = [...this.guests, guest];
+    }
+    room.book(guest, keycard);
+
+    return keycard;
   };
 }
 
-const filename = "input.txt";
-const commands: Command[] = getCommandsFromFileName(filename);
-const hotel = new Hotel();
+const main = () => {
+  const filename = "input.txt";
+  const commands: Command[] = getCommandsFromFileName(filename);
 
-commands.forEach((command) => {
-  switch (command.name) {
-    case "create_hotel":
-      const [floor, roomPerFloor] = command.params;
+  const PannawitHotel = new Hotel();
 
-      hotel.createRooms(parseInt(floor), parseInt(roomPerFloor));
+  commands.forEach((command) => {
+    switch (command.name) {
+      case "create_hotel":
+        const [floor, roomPerFloor] = command.params;
+        PannawitHotel.createRooms(parseInt(floor), parseInt(roomPerFloor));
 
-      return;
+        return;
 
-    case "list_available_rooms":
-      console.log(hotel.getAvailableRooms());
+      case "list_available_rooms":
+        PannawitHotel.getAvailableRoom();
+        return;
 
-      return;
+      case "book":
+        const [room, customerName, customerAge] = command.params;
 
-    case "book":
-      const [room, customerName, customerAge] = command.params;
+        PannawitHotel.bookByRoom(parseInt(room), customerName, parseInt(customerAge));
 
-      hotel.bookingByRoom(parseInt(room), customerName, parseInt(customerAge));
+        return;
 
-      return;
+      case "checkout":
+        const [keycardNumber, customerNameCheckout] = command.params;
 
-    case "checkout":
-      const [keycardNumber, customerNameCheckout] = command.params;
+        PannawitHotel.checkoutByKeycard(parseInt(keycardNumber), customerNameCheckout);
+        return;
 
-      hotel.checkoutByKeycard(customerNameCheckout, parseInt(keycardNumber));
+      case "list_guest":
+        PannawitHotel.getAvailableGuest();
+        return;
 
-      return;
+      case "get_guest_in_room":
+        const [roomNumber] = command.params;
+        PannawitHotel.findGuestByRoom(parseInt(roomNumber));
+        return;
 
-    case "list_guest":
-      console.log(`${hotel.getCustomer()}`);
+      case "list_guest_by_age":
+        const [condition, age] = command.params;
+        PannawitHotel.findGuestByAge(condition, parseInt(age));
 
-      return;
+        return;
 
-    case "get_guest_in_room":
-      const [roomNumber] = command.params;
+      case "list_guest_by_floor":
+        const [floorNumber] = command.params;
 
-      const customer = hotel.getCustomerByRoomNumber(parseInt(roomNumber));
+        PannawitHotel.findGuestByFloor(parseInt(floorNumber));
+        return;
 
-      console.log(customer.getCustomer().getName());
+      case "checkout_guest_by_floor":
+        const [floorNumber2] = command.params;
+        PannawitHotel.checkoutByFloor(parseInt(floorNumber2));
+        return;
 
-      return;
+      case "book_by_floor":
+        const [floorNumber3, customerName2, age2] = command.params;
+        PannawitHotel.bookByFloor(parseInt(floorNumber3), customerName2, parseInt(age2));
+        return;
+      default:
+        return;
+    }
+  });
+};
 
-    case "list_guest_by_age":
-      const [condition, age] = command.params;
-
-      console.log(`${hotel.getCustomerByAge(condition, parseInt(age))}`);
-
-      return;
-
-    case "list_guest_by_floor":
-      const [floorNumber] = command.params;
-
-      console.log(`${hotel.getCustomerByFloor(parseInt(floorNumber))}`);
-
-    case "checkout_guest_by_floor":
-      const [floorNumber2] = command.params;
-
-      hotel.checkoutByFloor(parseInt(floorNumber2));
-      return;
-
-    case "book_by_floor":
-      const [floorNumber3, customerName2] = command.params;
-
-      hotel.bookingByFloor(parseInt(floorNumber3), customerName2);
-
-      return;
-
-    default:
-      return;
-  }
-});
+main();
