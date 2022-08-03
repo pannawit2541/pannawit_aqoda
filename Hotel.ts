@@ -166,12 +166,16 @@ export class Hotel {
     switch (condition) {
       case ">":
         guest = this.guests.filter((c) => c.getAge() > age);
+        break;
       case ">=":
         guest = this.guests.filter((c) => c.getAge() >= age);
+        break;
       case "<":
         guest = this.guests.filter((c) => c.getAge() < age);
+        break;
       case "<=":
         guest = this.guests.filter((c) => c.getAge() <= age);
+        break;
     }
     console.log(`${guest.map((c) => c.getName())}`);
   };
@@ -206,5 +210,3 @@ export class Hotel {
     room.book(guest, keycard);
   };
 }
-
-
