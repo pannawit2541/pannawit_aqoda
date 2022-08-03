@@ -19,18 +19,9 @@ Self Check-in & Check-out System
 
 ## Setup
 ```bash
-$ npm install -D ts-node typescript '@types/node'
+npm i -g ts-node typescript '@types/node'
 ```
-### Add tsconfig.json
-```bash
-{
-  "compilerOptions": {
-    "target": "ES6",
-    "module": "commonjs",
-    "sourceMap": true
-  }
-}
-```
+
 ### Execute
 ```bash
 ts-node main.ts
