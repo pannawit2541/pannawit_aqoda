@@ -19,12 +19,12 @@ Self Check-in & Check-out System
 
 ## Setup
 ```bash
-npm i -g ts-node typescript '@types/node'
+npm i 
 ```
 
 ### Execute
 ```bash
-ts-node main.ts
+npx ts-node main.ts
 ```
 
 ##
