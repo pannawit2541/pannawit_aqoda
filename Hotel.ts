@@ -1,5 +1,3 @@
-import { Command, getCommandsFromFileName } from "./readfile";
-
 class Room {
   private roomNumber: number;
   private guest: Guest | undefined;
@@ -11,7 +9,13 @@ class Room {
 
   public getGuest = () => this.guest;
 
+  public getGuestName = () => this.guest.getName();
+
+  public getGuestAge = () => this.guest.getAge();
+
   public getKeycard = () => this.keycard;
+
+  public getKeycardNumber = () => this.keycard.getKeycardNumber();
 
   public getRoomNumber = () => this.roomNumber;
 
@@ -75,7 +79,7 @@ class Keycard {
   public checkout = () => (this.roomNumber = undefined);
 }
 
-class Hotel {
+export class Hotel {
   private rooms: Room[];
   private guests: Guest[];
   private keycards: Keycard[];
@@ -106,10 +110,10 @@ class Hotel {
     const room: Room = this.rooms.find((r: Room) => r.getRoomNumber() === roomNumber);
     const bookGuest = new Guest(guestName, guestAge);
     if (room.checkAvailable()) {
-      const keycard: Keycard = this.book(room, bookGuest);
-      console.log(`Room ${room.getRoomNumber()} is booked by ${guestName} with keycard number ${keycard.getKeycardNumber()}.`);
+      this.book(room, bookGuest);
+      console.log(`Room ${room.getRoomNumber()} is booked by ${guestName} with keycard number ${room.getKeycardNumber()}.`);
     } else {
-      console.log(`Cannot book room ${roomNumber} for ${guestName}, The room is currently booked by ${room.getGuest().getName()}.`);
+      console.log(`Cannot book room ${roomNumber} for ${guestName}, The room is currently booked by ${room.getGuestName()}.`);
     }
   };
 
@@ -131,7 +135,7 @@ class Hotel {
   };
 
   public checkoutByKeycard = (keycardNumber: number, guestName: string) => {
-    const room: Room = this.rooms.find((room: Room) => room.getKeycard() && room.getKeycard().getKeycardNumber() === keycardNumber);
+    const room: Room = this.rooms.find((room: Room) => room.getKeycard() && room.getKeycardNumber() === keycardNumber);
 
     if (room.isOwn(guestName, keycardNumber)) {
       room.checkout();
@@ -174,16 +178,16 @@ class Hotel {
 
   public findGuestByRoom = (roomNumber: number) => {
     const room: Room = this.rooms.find((room: Room) => room.getRoomNumber() === roomNumber);
-    console.log(`${room.getGuest().getName()}`);
+    console.log(`${room.getGuestName()}`);
   };
 
   public findGuestByFloor = (floorNumber: number) => {
     const rooms: Room[] = this.rooms.filter((room: Room) => !room.checkAvailable() && this.getFloorOfRoom(room.getRoomNumber()) === floorNumber);
-    console.log(`${rooms.map((r: Room) => r.getGuest().getName())}`);
+    console.log(`${rooms.map((r: Room) => r.getGuestName())}`);
   };
 
   private removeGuest = (guestName: string) => {
-    const isBookingRoom: boolean = this.rooms.some((room: Room) => room.getGuest() && room.getGuest().getName() === guestName);
+    const isBookingRoom: boolean = this.rooms.some((room: Room) => !room.checkAvailable() && room.getGuestName() === guestName);
 
     if (!isBookingRoom) {
       this.guests = this.guests.filter((c) => c.getName() !== guestName);
@@ -200,76 +204,7 @@ class Hotel {
       this.guests = [...this.guests, guest];
     }
     room.book(guest, keycard);
-
-    return keycard;
   };
 }
 
-const main = () => {
-  const filename = "input.txt";
-  const commands: Command[] = getCommandsFromFileName(filename);
 
-  const PannawitHotel = new Hotel();
-
-  commands.forEach((command) => {
-    switch (command.name) {
-      case "create_hotel":
-        const [floor, roomPerFloor] = command.params;
-        PannawitHotel.createRooms(parseInt(floor), parseInt(roomPerFloor));
-
-        return;
-
-      case "list_available_rooms":
-        PannawitHotel.getAvailableRoom();
-        return;
-
-      case "book":
-        const [room, customerName, customerAge] = command.params;
-
-        PannawitHotel.bookByRoom(parseInt(room), customerName, parseInt(customerAge));
-
-        return;
-
-      case "checkout":
-        const [keycardNumber, customerNameCheckout] = command.params;
-
-        PannawitHotel.checkoutByKeycard(parseInt(keycardNumber), customerNameCheckout);
-        return;
-
-      case "list_guest":
-        PannawitHotel.getAvailableGuest();
-        return;
-
-      case "get_guest_in_room":
-        const [roomNumber] = command.params;
-        PannawitHotel.findGuestByRoom(parseInt(roomNumber));
-        return;
-
-      case "list_guest_by_age":
-        const [condition, age] = command.params;
-        PannawitHotel.findGuestByAge(condition, parseInt(age));
-
-        return;
-
-      case "list_guest_by_floor":
-        const [floorNumber] = command.params;
-
-        PannawitHotel.findGuestByFloor(parseInt(floorNumber));
-        return;
-
-      case "checkout_guest_by_floor":
-        const [floorNumber2] = command.params;
-        PannawitHotel.checkoutByFloor(parseInt(floorNumber2));
-        return;
-
-      case "book_by_floor":
-        const [floorNumber3, customerName2, age2] = command.params;
-        PannawitHotel.bookByFloor(parseInt(floorNumber3), customerName2, parseInt(age2));
-        return;
-      default:
-        return;
-    }
-  });
-};
-
-main();
