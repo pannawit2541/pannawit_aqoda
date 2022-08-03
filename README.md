@@ -1,4 +1,4 @@
-# Aqoda
+# Pannawit Aqoda
 
 Self Check-in & Check-out System
 
@@ -17,8 +17,29 @@ Self Check-in & Check-out System
 4. ดูรายชื่อแขกโดยกำหนดช่วงอายุได้
 5. ดูชื่อแขกในห้องพักที่ระบุได้
 
+## Setup
 ```bash
-$ node main.js
+$ npm install -D ts-node typescript '@types/node'
+```
+### Add tsconfig.json
+```bash
+{
+  "compilerOptions": {
+    "target": "ES6",
+    "module": "commonjs",
+    "sourceMap": true
+  }
+}
+```
+### Execute
+```bash
+ts-node main.ts
+```
+
+##
+
+```bash
+$ ts-node main.ts
 Hotel created with 2 floor(s), 3 room(s) per floor.
 Room 203 is booked by Thor with keycard number 1.
 Room 101 is booked by PeterParker with keycard number 2.
@@ -29,27 +50,15 @@ Cannot book room 203 for TonyStark, The room is currently booked by Thor.
 103
 Room 201 is checkout.
 Room 103 is booked by TonyStark with keycard number 4.
-Hotel is fully booked.
+Cannot book room 101 for Thanos, The room is currently booked by PeterParker.
 Only Thor can checkout with keycard number 1.
 Room 202 is checkout.
 Room 103 is checkout.
-Thor, PeterParker, StephenStrange
+Thor,PeterParker,StephenStrange
 Thor
 PeterParker
+Thor
+Room 101,102 are checkout.
+Room 101,102,103 are booked with keycard number 2,3,4
+Cannot book floor 2 for TonyStark.
 ```
-
-## วิธีการทำโจทย์
-
-1. เลือกภาษาที่ใช้เขียนโค้ด
-2. แปลงโค้ดในไฟล์ main.js เป็นภาษาที่เลือก
-3. ทดสอบการทำงานของโปรแกรมโดยใช้ข้อมูลนำเข้าจากไฟล์  input.txt และต้องได้ผลลัพธ์เหมือนไฟล์ ouput.txt
-
-*** มีเวลาทำ 48 ชั่วโมง เริ่มนับเวลาจากที่ได้รับโจทย์ผ่านทาง Email
-
-## สิ่งที่คาดหวัง
-
-- Code Style
-- Programming Language Proficiency
-- OOP/Functional Programming
-# pannawit_aqoda
-# pannawit_aqoda
